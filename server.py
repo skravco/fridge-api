@@ -5,7 +5,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy import event
 from datetime import datetime
 
+from credentials import ADMIN_USERNAME, ADMIN_PASSWORD
+
 import linked_list
+import hash_table
 
 # app
 app = Flask(__name__)
@@ -26,12 +29,28 @@ db = SQLAlchemy(app)
 timestamp = datetime.now()
 
 
+def authenticate(admin, password):
+    if admin == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        return True
+    return False
+
+
+def admin_required(fn):
+    def wrapper(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not authenticate(auth.username, auth.password):
+            return jsonify({"message": "Authentication failed"}), 401
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 # mods
 class Cuisine(db.Model):
     __tablename__ = "cuisine"
     id = db.Column(db.Integer, primary_key=True)
-    origins = db.Column(db.String(50))
-    features = db.Column(db.String(150))
+    origins = db.Column(db.String(25))
+    features = db.Column(db.String(125))
     allergens = db.Column(db.String(125))
 
 
@@ -40,17 +59,23 @@ class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
     mealtime = db.Column(db.String(50))
-    ingredients = db.Column(db.String(500))
-    description = db.Column(db.String(500))
+    ingredients = db.Column(db.String(250))
+    source = db.Column(db.String(125))
+    isVegetarian = db.Column(db.Boolean(False))
     date = db.Column(db.Date)
-    cuisine_id = db.Column(db.Integer, db.ForeignKey("cuisine.id"), nullable=False)
+    cuisine_id = db.Column(
+        db.Integer, db.ForeignKey("cuisine.id"), nullable=False
+    )
 
 
-@app.route("/cuisine", methods=["POST"])
+@app.route("/admin/cuisine", methods=["POST"], endpoint="add_cuisine")
+@admin_required
 def add_cuisine():
     data = request.get_json()
     c = Cuisine(
-        origins=data["origins"], features=data["features"], allergens=data["allergens"]
+        origins=data["origins"],
+        features=data["features"],
+        allergens=data["allergens"],
     )
     db.session.add(c)
     db.session.commit()
@@ -92,7 +117,7 @@ def retrieve_cuisines_asc():
 
 
 @app.route("/cuisine/<cuisine_id>", methods=["GET"])
-def fetch_cuisine(cuisine_id):
+def find_cuisine(cuisine_id):
     all_cuisines = Cuisine.query.all()
     ll = linked_list.LinkedList()
 
@@ -108,6 +133,42 @@ def fetch_cuisine(cuisine_id):
 
     cuisine = ll.get_single_node(cuisine_id)
     return jsonify(cuisine), 200
+
+
+@app.route(
+    "/admin/recipe/<cuisine_id>", methods=["POST"], endpoint="add_new_recipe"
+)
+@admin_required
+def add_new_recipe(cuisine_id):
+    data = request.get_json()
+
+    cuisine = Cuisine.query.filter_by(id=cuisine_id).first()
+    if not cuisine:
+        return jsonify({"message": "cuisine does not exist."}), 400
+
+    ht = hash_table.HashTable(10)
+
+    ht.add_key_value("name", data["name"])
+    ht.add_key_value("mealtime", data["mealtime"])
+    ht.add_key_value("ingredients", data["ingredients"])
+    ht.add_key_value("source", data["source"])
+    ht.add_key_value("isVegetarian", data.get("isVegetarian", False))
+    ht.add_key_value("date", timestamp)
+    ht.add_key_value("cuisine_id", data["cuisine_id"])
+
+    new_recipe = Recipe(
+        name=ht.get_value("name"),
+        mealtime=ht.get_value("mealtime"),
+        ingredients=ht.get_value("ingredients"),
+        description=ht.get_value("description"),
+        isVegetarian=ht.get_value("isVegetarian"),
+        date=ht.get_value("date"),
+        cuisine_id=ht.get_value("cuisine_id"),
+    )
+
+    db.session.add(new_recipe)
+    db.session.commit()
+    return jsonify({"message": "new recipe added."})
 
 
 with app.app_context():
