@@ -1,4 +1,4 @@
-import os 
+import os
 
 from flask import Flask, request, jsonify
 from sqlite3 import Connection as Conn
@@ -20,7 +20,7 @@ admin_password = os.environ.get("API_ADMIN_PASSWORD")
 
 # app
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = sqlalchemy_uri 
+app.config["SQLALCHEMY_DATABASE_URI"] = sqlalchemy_uri
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = 0
 
 
@@ -168,7 +168,7 @@ def add_new_recipe(cuisine_id):
         name=ht.get_value("name"),
         mealtime=ht.get_value("mealtime"),
         ingredients=ht.get_value("ingredients"),
-        description=ht.get_value("description"),
+        source=ht.get_value("source"),
         isVegetarian=ht.get_value("isVegetarian"),
         date=ht.get_value("date"),
         cuisine_id=ht.get_value("cuisine_id"),
@@ -179,8 +179,8 @@ def add_new_recipe(cuisine_id):
     return jsonify({"message": "new recipe added."})
 
 
-#with app.app_context():
+# with app.app_context():
 #    db.create_all()
 
 if __name__ == "__main__":
-    app.run()#(debug=0)
+    app.run()  # (debug=0)
