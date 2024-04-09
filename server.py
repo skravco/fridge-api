@@ -1,34 +1,48 @@
-import os
+import os 
 
 from flask import Flask, request, jsonify
+from sqlite3 import Connection as Conn
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 from datetime import datetime
 
+
 import linked_list
 import hash_table
 
-#  init flask app
+
+postgres_database = os.environ.get("POSTGRES_DATABASE")
+sqlalchemy_uri = f"postgresql://{postgres_database}"
+
+admin_username = os.environ.get("API_ADMIN_USERNAME")
+admin_password = os.environ.get("API_ADMIN_PASSWORD")
+
+# app
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] =  os.environ.get("DATABASE_URL")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+app.config["SQLALCHEMY_DATABASE_URI"] = sqlalchemy_uri 
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = 0
 
 
-# init sqlalchemy
+# sqlite3 to enforce foreign key constrains
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, Conn):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON;")
+        cursor.close()
+
+
 db = SQLAlchemy(app)
 timestamp = datetime.now()
 
-# authenticate admin
+
 def authenticate(admin, password):
-    if admin == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+    if admin == admin_username and password == admin_password:
         return True
     return False
 
-# decorator | require admin authentication
+
 def admin_required(fn):
     def wrapper(*args, **kwargs):
         auth = request.authorization
@@ -39,7 +53,7 @@ def admin_required(fn):
     return wrapper
 
 
-# define db models
+# mods
 class Cuisine(db.Model):
     __tablename__ = "cuisine"
     id = db.Column(db.Integer, primary_key=True)
@@ -55,13 +69,13 @@ class Recipe(db.Model):
     mealtime = db.Column(db.String(50))
     ingredients = db.Column(db.String(250))
     source = db.Column(db.String(125))
-    isVegetarian = db.Column(db.Boolean(False))
+    isVegetarian = db.Column(db.Boolean, default=False)
     date = db.Column(db.Date)
     cuisine_id = db.Column(
         db.Integer, db.ForeignKey("cuisine.id"), nullable=False
     )
 
-# routes
+
 @app.route("/admin/cuisine", methods=["POST"], endpoint="add_cuisine")
 @admin_required
 def add_cuisine():
@@ -166,7 +180,7 @@ def add_new_recipe(cuisine_id):
 
 
 #with app.app_context():
-#   db.create_all()
+#    db.create_all()
 
 if __name__ == "__main__":
-    app.run(debug=0)
+    app.run()#(debug=0)
