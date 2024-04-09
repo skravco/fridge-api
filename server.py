@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, request, jsonify
 from sqlite3 import Connection as Conn
 from flask_sqlalchemy import SQLAlchemy
@@ -5,36 +7,28 @@ from sqlalchemy.engine import Engine
 from sqlalchemy import event
 from datetime import datetime
 
-from credentials import ADMIN_USERNAME, ADMIN_PASSWORD
+#from credentials import ADMIN_USERNAME, ADMIN_PASSWORDSE
 
 import linked_list
 import hash_table
 
-# app
+#  init flask app
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///model.db"
+app.config["SQLALCHEMY_DATABASE_URI"] =  os.environ.get("DATABASE_URL")
+# postgres://open_fridge_api_user:e6V0sp7Scx6dWwBSR7dTMYzVSgGdxVPa@dpg-coaflbv79t8c73ehaidg-a.frankfurt-postgres.render.com/open_fridge_api
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = 0
 
-
-# sqlite3 to enforce foreign key constrains
-@event.listens_for(Engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, connection_record):
-    if isinstance(dbapi_connection, Conn):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON;")
-        cursor.close()
-
-
+# init sqlalchemy
 db = SQLAlchemy(app)
 timestamp = datetime.now()
 
-
+# authenticate admin
 def authenticate(admin, password):
     if admin == ADMIN_USERNAME and password == ADMIN_PASSWORD:
         return True
     return False
 
-
+# decorator | require admin authentication
 def admin_required(fn):
     def wrapper(*args, **kwargs):
         auth = request.authorization
@@ -45,7 +39,7 @@ def admin_required(fn):
     return wrapper
 
 
-# mods
+# define db models
 class Cuisine(db.Model):
     __tablename__ = "cuisine"
     id = db.Column(db.Integer, primary_key=True)
@@ -67,7 +61,7 @@ class Recipe(db.Model):
         db.Integer, db.ForeignKey("cuisine.id"), nullable=False
     )
 
-
+# routes
 @app.route("/admin/cuisine", methods=["POST"], endpoint="add_cuisine")
 @admin_required
 def add_cuisine():
@@ -171,8 +165,8 @@ def add_new_recipe(cuisine_id):
     return jsonify({"message": "new recipe added."})
 
 
-with app.app_context():
-    db.create_all()
+#with app.app_context():
+#   db.create_all()
 
 if __name__ == "__main__":
     app.run(debug=0)
