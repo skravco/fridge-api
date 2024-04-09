@@ -1,13 +1,10 @@
 import os
 
 from flask import Flask, request, jsonify
-from sqlite3 import Connection as Conn
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 from datetime import datetime
-
-#from credentials import ADMIN_USERNAME, ADMIN_PASSWORDSE
 
 import linked_list
 import hash_table
@@ -15,8 +12,11 @@ import hash_table
 #  init flask app
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] =  os.environ.get("DATABASE_URL")
-# postgres://open_fridge_api_user:e6V0sp7Scx6dWwBSR7dTMYzVSgGdxVPa@dpg-coaflbv79t8c73ehaidg-a.frankfurt-postgres.render.com/open_fridge_api
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = 0
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+
 
 # init sqlalchemy
 db = SQLAlchemy(app)
