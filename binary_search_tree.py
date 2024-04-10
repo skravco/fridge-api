@@ -2,7 +2,7 @@ class Node:
     def __init__(self, data):
         self.data = data
         self.left = None
-        seld.right = None
+        self.right = None
 
 
 class BinarySearchTree:
