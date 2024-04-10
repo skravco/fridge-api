@@ -47,4 +47,4 @@ class BinarySearchTree:
         if self.root is None:
             return False
 
-        return self._search_recursive(recipe_id, node.root)
+        return self._search_recursive(recipe_id, self.root)
