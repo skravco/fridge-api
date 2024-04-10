@@ -10,6 +10,7 @@ from datetime import datetime
 
 import linked_list
 import hash_table
+import binary_search_tree
 
 
 postgres_database = os.environ.get("POSTGRES_DATABASE")
@@ -177,6 +178,33 @@ def add_new_recipe(cuisine_id):
     db.session.add(new_recipe)
     db.session.commit()
     return jsonify({"message": "new recipe added."})
+
+
+@app.route("/recipe/<recipe_id>", methods=["GET"])
+def find_recipe(recipe_id):
+    recipes = Recipe.query.all()
+    random.shuffle(recipe_id)
+
+    bst = binary_search_tree.BinarySearchTree()
+
+    for recipe in recipes:
+        bst.insert(
+            {
+                "id": recipe.id,
+                "mealtime": recipe.mealtime,
+                "ingredients": recipe.ingredients,
+                "source": recipe.source,
+                "isVegetarian": recipe.isVegetarian,
+                "cuisine_id": recipe.cuisine_id,
+            }
+        )
+
+    recipe = bst.search(recipe_id)
+
+    if not recipe:
+        return jsonify({"message": "recipe not found"})
+
+    return jsonify(recipe)
 
 
 # with app.app_context():
